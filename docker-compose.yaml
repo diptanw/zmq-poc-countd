@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  emitter:
+    build: emitter
+    image: zmq-poc/emitter:latest
+    working_dir: /go/src/emitter
+    volumes:
+      - ./emitter:/go/src/emitter
+    networks:
+      - zmq-poc
+    command: bash -c "emitter -countd-url=tcp://countd:6500 < thoreau-walden-sample.txt"
+    depends_on:
+      - countd
+
+  countd:
+    build:
+      context: .
+      args:
+        package: countd
+    volumes:
+      - ./hotlist:/hotlist:ro
+    networks:
+      - zmq-poc
+    image: zmq-poc/countd:latest
+    depends_on:
+      - receiver
+    command:
+      - "-zmq-bind-addr=tcp://*:6500"
+      - "-zmq-receiver-addr=tcp://receiver:6500"
+
+  receiver:
+    build:
+      context: .
+      args:
+        package: receiver
+    networks:
+      - zmq-poc
+    image: zmq-poc/receiver:latest
+    command:
+      - "-zmq-bind-addr=tcp://*:6500"
+      - "-log-level=2"
+
+
+networks:
+  zmq-poc:
